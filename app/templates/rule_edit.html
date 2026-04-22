@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if rule else "New" }} rule — Finances{% endblock %}
+{% block body %}
+
+<p><a href="{{ url_for('rules_index') }}">← back to rules</a></p>
+<h1>{{ "Edit rule" if rule else "New rule" }}</h1>
+
+<form method="post" action="{{ url_for('rules_update', rule_id=rule.id) if rule else url_for('rules_create') }}" class="stack rule-form">
+  <label>Name
+    <input type="text" name="name" required value="{{ rule.name if rule else '' }}">
+  </label>
+
+  <div class="row">
+    <label>Priority (lower wins)
+      <input type="number" name="priority" value="{{ rule.priority if rule else 100 }}">
+    </label>
+    <label class="check">
+      <input type="checkbox" name="enabled" {% if not rule or rule.enabled %}checked{% endif %}>
+      Enabled
+    </label>
+  </div>
+
+  <fieldset>
+    <legend>Match criteria (all must be satisfied)</legend>
+
+    <label>Account numbers (comma separated, blank = any)
+      <input type="text" name="match_account_numbers"
+             value="{{ rule.match_account_numbers|join(',') if rule and rule.match_account_numbers else '' }}"
+             placeholder="e.g. 2543, 4927">
+    </label>
+
+    <label>Name / description regex (case-insensitive)
+      <input type="text" name="match_name_regex"
+             value="{{ rule.match_name_regex if rule and rule.match_name_regex else '' }}"
+             placeholder="e.g. FENIX|DOORDASH">
+    </label>
+
+    <label>Category regex (case-insensitive)
+      <input type="text" name="match_category_regex"
+             value="{{ rule.match_category_regex if rule and rule.match_category_regex else '' }}"
+             placeholder="e.g. ^Groceries$ or Credit Card Payment">
+    </label>
+
+    <div class="row">
+      <label>Amount ≥
+        <input type="number" step="0.01" name="match_amount_min"
+               value="{{ rule.match_amount_min if rule and rule.match_amount_min is not none else '' }}">
+      </label>
+      <label>Amount ≤
+        <input type="number" step="0.01" name="match_amount_max"
+               value="{{ rule.match_amount_max if rule and rule.match_amount_max is not none else '' }}">
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Date from
+        <input type="date" name="match_date_from"
+               value="{{ rule.match_date_from if rule and rule.match_date_from else '' }}">
+      </label>
+      <label>Date to
+        <input type="date" name="match_date_to"
+               value="{{ rule.match_date_to if rule and rule.match_date_to else '' }}">
+      </label>
+    </div>
+
+    <label>Sign
+      <select name="match_sign">
+        <option value="" {% if not rule or not rule.match_sign %}selected{% endif %}>Either</option>
+        <option value="positive" {% if rule and rule.match_sign == 'positive' %}selected{% endif %}>Positive only (outflows)</option>
+        <option value="negative" {% if rule and rule.match_sign == 'negative' %}selected{% endif %}>Negative only (inflows)</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Action</legend>
+    <label>Classification
+      <select name="classification" required>
+        {% for key, label in classification_labels.items() %}
+          <option value="{{ key }}" {% if rule and rule.classification == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="row">
+      <label>Your %
+        <input type="number" step="0.01" min="0" max="100" name="split_user_pct"
+               value="{{ rule.split_user_pct if rule and rule.split_user_pct is not none else '' }}">
+      </label>
+      <label>Partner %
+        <input type="number" step="0.01" min="0" max="100" name="split_partner_pct"
+               value="{{ rule.split_partner_pct if rule and rule.split_partner_pct is not none else '' }}">
+      </label>
+    </div>
+    <label>Note
+      <input type="text" name="note" value="{{ rule.note if rule and rule.note else '' }}">
+    </label>
+  </fieldset>
+
+  <label class="check">
+    <input type="checkbox" name="apply_now" checked>
+    Re-apply all rules after saving
+  </label>
+
+  <button type="submit">{{ "Save changes" if rule else "Create rule" }}</button>
+</form>
+
+{% endblock %}

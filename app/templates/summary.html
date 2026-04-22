@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Summary — Finances{% endblock %}
+{% block body %}
+
+<h1>Partnership Reconciliation</h1>
+<p class="muted">
+  Window:
+  <strong>{{ summary.start or "—" }}</strong> to
+  <strong>{{ summary.end or "present" }}</strong>
+  &middot;
+  <a href="{{ url_for('settings') }}">change</a>
+</p>
+
+{% if tx_count == 0 %}
+  <div class="callout">
+    No transactions loaded yet. <a href="{{ url_for('import_form') }}">Import a CSV</a> to get started.
+  </div>
+{% endif %}
+
+<section class="cards">
+  <div class="card card-positive">
+    <div class="label">Business income</div>
+    <div class="value">{{ summary.gross_income | money }}</div>
+    <div class="sub">{{ summary.business_income.count }} txns</div>
+  </div>
+  <div class="card">
+    <div class="label">Business expenses</div>
+    <div class="value">{{ summary.business_expense.total | money }}</div>
+    <div class="sub">{{ summary.business_expense.count }} txns</div>
+  </div>
+  <div class="card">
+    <div class="label">Shared expenses</div>
+    <div class="value">{{ summary.shared_expense.total | money }}</div>
+    <div class="sub">{{ summary.shared_expense.count }} txns</div>
+  </div>
+  <div class="card {% if summary.net_profit >= 0 %}card-positive{% else %}card-negative{% endif %}">
+    <div class="label">Net profit (income − business − shared)</div>
+    <div class="value">{{ summary.net_profit | money }}</div>
+    <div class="sub">
+      50/50 share: {{ summary.partner_profit_share | money }} each
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Other buckets</h2>
+  <table>
+    <thead>
+      <tr><th>Bucket</th><th class="num">Count</th><th class="num">Total</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Personal</td><td class="num">{{ summary.personal.count }}</td><td class="num">{{ summary.personal.total | money }}</td></tr>
+      <tr><td>Transfer (excluded)</td><td class="num">{{ summary.transfer.count }}</td><td class="num">{{ summary.transfer.total | money }}</td></tr>
+      <tr><td>Excluded</td><td class="num">{{ summary.excluded.count }}</td><td class="num">{{ summary.excluded.total | money }}</td></tr>
+      <tr class="warn"><td>Unclassified</td><td class="num">{{ summary.unclassified.count }}</td><td class="num">{{ summary.unclassified.total | money }}</td></tr>
+    </tbody>
+  </table>
+  {% if summary.unclassified.count > 0 %}
+    <p class="muted">
+      <a href="{{ url_for('transactions', classification='unclassified', in_window='1') }}">
+        Review unclassified transactions in the window →
+      </a>
+    </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Breakdown by account and classification (within window)</h2>
+  <table>
+    <thead>
+      <tr><th>Account</th><th>Institution</th><th>Classification</th><th class="num">Count</th><th class="num">Total</th></tr>
+    </thead>
+    <tbody>
+      {% for r in breakdown %}
+        <tr>
+          <td>{{ r.account_name }} (…{{ r.account_number }})</td>
+          <td>{{ r.institution_name }}</td>
+          <td>{{ classification_labels[r.classification] or r.classification }}</td>
+          <td class="num">{{ r.n }}</td>
+          <td class="num">{{ r.total | money }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

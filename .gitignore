@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Local data - DO NOT commit the live DB or uploaded receipts
+data/finances.db
+data/finances.db-journal
+data/finances.db-wal
+data/finances.db-shm
+data/receipts/*
+!data/receipts/.gitkeep
+data/backups/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store

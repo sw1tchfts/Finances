@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Transactions — Finances{% endblock %}
+{% block body %}
+
+<h1>Transactions</h1>
+
+<form method="get" class="filters">
+  <label>Search
+    <input name="search" value="{{ q.get('search','') }}" placeholder="name / description / category">
+  </label>
+  <label>Account
+    <select name="account">
+      <option value="">All</option>
+      {% for a in accounts %}
+        <option value="{{ a.account_number }}" {% if q.get('account') == a.account_number %}selected{% endif %}>
+          {{ a.institution_name }} — {{ a.account_name }} (…{{ a.account_number }})
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Classification
+    <select name="classification">
+      <option value="">All</option>
+      {% for c in classifications %}
+        <option value="{{ c }}" {% if q.get('classification') == c %}selected{% endif %}>
+          {{ classification_labels[c] }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>From <input type="date" name="from" value="{{ q.get('from','') }}"></label>
+  <label>To <input type="date" name="to" value="{{ q.get('to','') }}"></label>
+  <label class="check">
+    <input type="checkbox" name="in_window" value="1" {% if in_window %}checked{% endif %}>
+    Only in partnership window
+  </label>
+  <button type="submit">Filter</button>
+  <a class="btn-link" href="{{ url_for('transactions') }}">Reset</a>
+</form>
+
+<p class="muted">{{ rows|length }} result{{ '' if rows|length == 1 else 's' }} (max {{ q.get('limit', 200) }}).</p>
+
+<table class="tx-table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Account</th>
+      <th>Name</th>
+      <th>Category</th>
+      <th class="num">Amount</th>
+      <th>Classification</th>
+      <th>Source</th>
+      <th>Rec.</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.date }}</td>
+        <td class="small">{{ r.institution_name }}<br>{{ r.account_name }}</td>
+        <td><a href="{{ url_for('transaction_detail', tx_id=r.id) }}">{{ r.name }}</a></td>
+        <td class="small">{{ r.category }}</td>
+        <td class="num {% if r.amount < 0 %}neg{% endif %}">{{ r.amount | signed_money }}</td>
+        <td class="cls-{{ r.classification }}">{{ classification_labels[r.classification] or r.classification }}</td>
+        <td class="small muted">{{ r.source or '—' }}</td>
+        <td class="num">{{ r.receipt_count or 0 }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

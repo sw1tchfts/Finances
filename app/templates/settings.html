@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Settings — Finances{% endblock %}
+{% block body %}
+
+<h1>Settings</h1>
+
+<form method="post" class="stack">
+  <fieldset>
+    <legend>Partnership window</legend>
+    <div class="row">
+      <label>Start date
+        <input type="date" name="partnership_start" value="{{ values.partnership_start }}">
+      </label>
+      <label>End date (leave blank for "present")
+        <input type="date" name="partnership_end" value="{{ values.partnership_end }}">
+      </label>
+    </div>
+    <p class="muted small">
+      Only transactions inside this window are counted in the reconciliation totals.
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Partner names</legend>
+    <div class="row">
+      <label>You
+        <input type="text" name="partner_user_name" value="{{ values.partner_user_name }}">
+      </label>
+      <label>Partner
+        <input type="text" name="partner_other_name" value="{{ values.partner_other_name }}">
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Default split (used when a rule has no explicit split)</legend>
+    <div class="row">
+      <label>Your %
+        <input type="number" step="0.01" min="0" max="100" name="default_split_user_pct" value="{{ values.default_split_user_pct }}">
+      </label>
+      <label>Partner %
+        <input type="number" step="0.01" min="0" max="100" name="default_split_partner_pct" value="{{ values.default_split_partner_pct }}">
+      </label>
+    </div>
+  </fieldset>
+
+  <button type="submit">Save</button>
+</form>
+
+{% endblock %}
