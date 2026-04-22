@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Import — Finances{% endblock %}
+{% block body %}
+
+<h1>Import</h1>
+<p class="muted">
+  Drop new Rocket Money CSV exports into <code>data/raw/</code> and pick one below.
+  Import is additive: each row is fingerprinted, so re-importing a file or an overlapping
+  export never duplicates or overwrites existing data.
+</p>
+
+<form method="post" class="stack">
+  <label>File from <code>data/raw/</code>
+    <select name="filename" required>
+      <option value="">— choose —</option>
+      {% for f in available %}
+        <option value="{{ f }}">{{ f }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Notes (optional)
+    <input type="text" name="notes" placeholder="e.g. April 2026 export">
+  </label>
+  <button type="submit">Import</button>
+</form>
+
+<h2>Past imports</h2>
+<table>
+  <thead>
+    <tr><th>When</th><th>File</th><th>Rows</th><th>Hash</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    {% for i in imports %}
+      <tr>
+        <td class="small">{{ i.imported_at }}</td>
+        <td>{{ i.filename }}</td>
+        <td class="num">{{ i.row_count }}</td>
+        <td class="mono small">{{ i.file_hash[:16] }}…</td>
+        <td class="small">{{ i.notes or '' }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Transaction {{ tx.id }} — Finances{% endblock %}
+{% block body %}
+
+<p><a href="{{ url_for('transactions') }}">← back to transactions</a></p>
+
+<h1>{{ tx.name }}</h1>
+<p class="muted">
+  {{ tx.date }} &middot; {{ tx.institution_name }} &middot; {{ tx.account_name }} (…{{ tx.account_number }})
+</p>
+
+<section class="grid-2">
+  <div>
+    <h2>Details</h2>
+    <dl class="detail-list">
+      <dt>Amount</dt><dd>{{ tx.amount | signed_money }}</dd>
+      <dt>Category (Rocket Money)</dt><dd>{{ tx.category }}</dd>
+      <dt>Description</dt><dd>{{ tx.description }}</dd>
+      <dt>Original date</dt><dd>{{ tx.original_date or '—' }}</dd>
+      <dt>Custom name</dt><dd>{{ tx.custom_name or '—' }}</dd>
+      <dt>Rocket Money note</dt><dd>{{ tx.note or '—' }}</dd>
+      <dt>Fingerprint</dt><dd class="mono small">{{ tx.fingerprint }}</dd>
+    </dl>
+  </div>
+
+  <div>
+    <h2>Classification</h2>
+    <form method="post" action="{{ url_for('classify_tx', tx_id=tx.id) }}" class="stack">
+      <label>Type
+        <select name="classification">
+          {% for key, label in classification_labels.items() %}
+            <option value="{{ key }}" {% if current and current.classification == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="row">
+        <label>Your %
+          <input type="number" step="0.01" min="0" max="100" name="split_user_pct"
+                 value="{{ current.split_user_pct if current and current.split_user_pct is not none else '' }}">
+        </label>
+        <label>Partner %
+          <input type="number" step="0.01" min="0" max="100" name="split_partner_pct"
+                 value="{{ current.split_partner_pct if current and current.split_partner_pct is not none else '' }}">
+        </label>
+      </div>
+      <label>Note
+        <input type="text" name="note" value="{{ current.note if current else '' }}">
+      </label>
+      <button type="submit">Save manual classification</button>
+    </form>
+    <p class="muted small">
+      Current source: {{ current.source if current else 'none' }}
+      {% if current and current.rule_id %}
+        (<a href="{{ url_for('rule_edit', rule_id=current.rule_id) }}">rule {{ current.rule_id }}</a>)
+      {% endif %}
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Classification history</h2>
+  <table>
+    <thead>
+      <tr><th>When</th><th>Classification</th><th>Source</th><th>Split</th><th>Note</th><th>Current</th></tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+        <tr>
+          <td class="small">{{ h.created_at }}</td>
+          <td>{{ classification_labels[h.classification] or h.classification }}</td>
+          <td class="small">{{ h.source }}</td>
+          <td class="small">
+            {% if h.split_user_pct is not none %}{{ h.split_user_pct }}/{{ h.split_partner_pct }}{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ h.note or '' }}</td>
+          <td>{% if not h.superseded_at %}<strong>yes</strong>{% else %}<span class="muted small">superseded {{ h.superseded_at }}</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Receipts</h2>
+  <form method="post" action="{{ url_for('upload_receipt', tx_id=tx.id) }}" enctype="multipart/form-data" class="stack">
+    <input type="file" name="receipt" required>
+    <input type="text" name="note" placeholder="Note (optional)">
+    <button type="submit">Upload</button>
+  </form>
+  {% if receipts %}
+    <ul class="receipts">
+      {% for r in receipts %}
+        <li>
+          <a href="{{ url_for('download_receipt', receipt_id=r.id) }}" target="_blank">{{ r.filename }}</a>
+          <span class="small muted">{{ (r.size_bytes / 1024) | round(1) }} KB, {{ r.uploaded_at }}</span>
+          {% if r.note %}<div class="small">{{ r.note }}</div>{% endif %}
+          <div class="mono small">sha256: {{ r.file_hash }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No receipts attached.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

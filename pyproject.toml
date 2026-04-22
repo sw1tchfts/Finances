@@ -1,0 +1,19 @@
+[project]
+name = "finances"
+version = "0.1.0"
+description = "Rocket Money CSV analyzer and partnership reconciliation tool"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+dev = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

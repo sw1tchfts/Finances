@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Rules — Finances{% endblock %}
+{% block body %}
+
+<h1>Rules</h1>
+<p class="muted">
+  Rules auto-classify transactions. Lower priority = wins first.
+  Manual classifications are never overwritten by rules.
+</p>
+
+<div class="toolbar">
+  <a class="btn" href="{{ url_for('rules_new') }}">+ New rule</a>
+  <form method="post" action="{{ url_for('rules_apply') }}" style="display:inline;">
+    <button type="submit">Re-apply all rules</button>
+  </form>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pri.</th>
+      <th>Name</th>
+      <th>Classification</th>
+      <th>Match</th>
+      <th>Split</th>
+      <th>Enabled</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rules %}
+      <tr>
+        <td class="num">{{ r.priority }}</td>
+        <td><a href="{{ url_for('rule_edit', rule_id=r.id) }}">{{ r.name }}</a></td>
+        <td>{{ classification_labels[r.classification] or r.classification }}</td>
+        <td class="small">
+          {% if r.match_account_numbers %}acct ∈ {{ r.match_account_numbers|join(',') }}{% endif %}
+          {% if r.match_name_regex %}<br>name/desc ~ <code>{{ r.match_name_regex }}</code>{% endif %}
+          {% if r.match_category_regex %}<br>category ~ <code>{{ r.match_category_regex }}</code>{% endif %}
+          {% if r.match_amount_min is not none %}<br>amt ≥ {{ r.match_amount_min }}{% endif %}
+          {% if r.match_amount_max is not none %}<br>amt ≤ {{ r.match_amount_max }}{% endif %}
+          {% if r.match_date_from %}<br>date ≥ {{ r.match_date_from }}{% endif %}
+          {% if r.match_date_to %}<br>date ≤ {{ r.match_date_to }}{% endif %}
+          {% if r.match_sign %}<br>{{ r.match_sign }} only{% endif %}
+        </td>
+        <td class="small">
+          {% if r.split_user_pct is not none %}{{ r.split_user_pct }}/{{ r.split_partner_pct }}{% else %}—{% endif %}
+        </td>
+        <td>{{ "yes" if r.enabled else "no" }}</td>
+        <td>
+          {% if r.enabled %}
+            <form method="post" action="{{ url_for('rules_disable', rule_id=r.id) }}" style="display:inline;">
+              <button type="submit" class="btn-small">Disable</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
