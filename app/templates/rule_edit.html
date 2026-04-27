@@ -7,7 +7,7 @@
 
 <form method="post" action="{{ url_for('rules_update', rule_id=rule.id) if rule else url_for('rules_create') }}" class="stack rule-form">
   <label>Name
-    <input type="text" name="name" required value="{{ rule.name if rule else '' }}">
+    <input type="text" name="name" required value="{{ rule.name if rule else defaults.get('name','') }}">
   </label>
 
   <div class="row">
@@ -25,19 +25,19 @@
 
     <label>Account numbers (comma separated, blank = any)
       <input type="text" name="match_account_numbers"
-             value="{{ rule.match_account_numbers|join(',') if rule and rule.match_account_numbers else '' }}"
+             value="{{ rule.match_account_numbers|join(',') if rule and rule.match_account_numbers else defaults.get('match_account_numbers','') }}"
              placeholder="e.g. 2543, 4927">
     </label>
 
     <label>Name / description regex (case-insensitive)
       <input type="text" name="match_name_regex"
-             value="{{ rule.match_name_regex if rule and rule.match_name_regex else '' }}"
+             value="{{ rule.match_name_regex if rule and rule.match_name_regex else defaults.get('match_name_regex','') }}"
              placeholder="e.g. FENIX|DOORDASH">
     </label>
 
     <label>Category regex (case-insensitive)
       <input type="text" name="match_category_regex"
-             value="{{ rule.match_category_regex if rule and rule.match_category_regex else '' }}"
+             value="{{ rule.match_category_regex if rule and rule.match_category_regex else defaults.get('match_category_regex','') }}"
              placeholder="e.g. ^Groceries$ or Credit Card Payment">
     </label>
 
@@ -55,19 +55,20 @@
     <div class="row">
       <label>Date from
         <input type="date" name="match_date_from"
-               value="{{ rule.match_date_from if rule and rule.match_date_from else '' }}">
+               value="{{ rule.match_date_from if rule and rule.match_date_from else defaults.get('match_date_from','') }}">
       </label>
       <label>Date to
         <input type="date" name="match_date_to"
-               value="{{ rule.match_date_to if rule and rule.match_date_to else '' }}">
+               value="{{ rule.match_date_to if rule and rule.match_date_to else defaults.get('match_date_to','') }}">
       </label>
     </div>
 
     <label>Sign
+      {% set _sign = rule.match_sign if rule else defaults.get('match_sign','') %}
       <select name="match_sign">
-        <option value="" {% if not rule or not rule.match_sign %}selected{% endif %}>Either</option>
-        <option value="positive" {% if rule and rule.match_sign == 'positive' %}selected{% endif %}>Positive only (outflows)</option>
-        <option value="negative" {% if rule and rule.match_sign == 'negative' %}selected{% endif %}>Negative only (inflows)</option>
+        <option value="" {% if not _sign %}selected{% endif %}>Either</option>
+        <option value="positive" {% if _sign == 'positive' %}selected{% endif %}>Positive only (outflows)</option>
+        <option value="negative" {% if _sign == 'negative' %}selected{% endif %}>Negative only (inflows)</option>
       </select>
     </label>
   </fieldset>
@@ -75,9 +76,10 @@
   <fieldset>
     <legend>Action</legend>
     <label>Classification
+      {% set _cls = rule.classification if rule else defaults.get('classification','') %}
       <select name="classification" required>
         {% for key, label in classification_labels.items() %}
-          <option value="{{ key }}" {% if rule and rule.classification == key %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ key }}" {% if _cls == key %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
     </label>

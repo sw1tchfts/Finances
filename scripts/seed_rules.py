@@ -114,6 +114,14 @@ def main() -> None:
         created += 1
     print(f"Seeded {created} new rule(s); {len(existing)} were already present.")
 
+    if created > 0:
+        result = rules_module.apply_rules(conn)
+        print(
+            f"Applied rules: {result['changed']} changed, "
+            f"{result['unchanged']} unchanged, "
+            f"{result['manual_skipped']} manual preserved."
+        )
+
 
 if __name__ == "__main__":
     main()

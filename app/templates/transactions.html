@@ -34,21 +34,62 @@
     <input type="checkbox" name="in_window" value="1" {% if in_window %}checked{% endif %}>
     Only in partnership window
   </label>
+  {% if q.get('sort') %}<input type="hidden" name="sort" value="{{ q.get('sort') }}">{% endif %}
+  {% if q.get('dir') %}<input type="hidden" name="dir" value="{{ q.get('dir') }}">{% endif %}
   <button type="submit">Filter</button>
   <a class="btn-link" href="{{ url_for('transactions') }}">Reset</a>
 </form>
 
-<p class="muted">{{ rows|length }} result{{ '' if rows|length == 1 else 's' }} (max {{ q.get('limit', 200) }}).</p>
+<div class="toolbar">
+  <p class="muted" style="margin:0;flex:1">
+    {{ rows|length }} result{{ '' if rows|length == 1 else 's' }} (max {{ q.get('limit', 200) }}).
+  </p>
+
+  {# "Create rule from this filter" — only shown when filters that map to rule
+     match criteria are present. We pre-populate the rule form via query
+     string so the user can adjust before saving. #}
+  {% set has_filterable = q.get('account') or q.get('search') or q.get('from') or q.get('to') %}
+  {% if has_filterable %}
+    {% set rule_qs = [] %}
+    {% if q.get('account')        %}{% set _ = rule_qs.append('match_account_numbers=' ~ q.get('account')) %}{% endif %}
+    {% if q.get('search')         %}{% set _ = rule_qs.append('match_name_regex=' ~ q.get('search')) %}{% endif %}
+    {% if q.get('from')           %}{% set _ = rule_qs.append('match_date_from=' ~ q.get('from')) %}{% endif %}
+    {% if q.get('to')             %}{% set _ = rule_qs.append('match_date_to=' ~ q.get('to')) %}{% endif %}
+    {% if q.get('classification') and q.get('classification') != 'unclassified' %}
+      {% set _ = rule_qs.append('classification=' ~ q.get('classification')) %}
+    {% endif %}
+    {% set name_seed = (q.get('search') or q.get('account') or 'New rule') %}
+    {% set _ = rule_qs.append('name=' ~ name_seed) %}
+    <a class="btn" href="{{ url_for('rules_new') }}?{{ rule_qs|join('&') }}">+ Create rule from this filter</a>
+  {% endif %}
+</div>
+
+{# Sort headers preserve all current query params. Helper below builds the URL. #}
+{% macro sort_link(label, key) -%}
+  {%- set is_active = sort_key == key -%}
+  {%- set next_dir = 'asc' if (is_active and sort_dir == 'desc') else ('desc' if is_active else 'desc') -%}
+  {%- set new_args = {} -%}
+  {%- for k, v in q.items() -%}{%- set _ = new_args.update({k: v}) -%}{%- endfor -%}
+  {%- set _ = new_args.update({'sort': key, 'dir': next_dir}) -%}
+  <a href="{{ url_for('transactions', **new_args) }}" class="sort-header {% if is_active %}active{% endif %}">
+    {{ label }}
+    {%- if is_active -%}
+      <span class="sort-arrow">{{ '▲' if sort_dir == 'asc' else '▼' }}</span>
+    {%- else -%}
+      <span class="sort-arrow muted">↕</span>
+    {%- endif -%}
+  </a>
+{%- endmacro %}
 
 <table class="tx-table">
   <thead>
     <tr>
-      <th>Date</th>
-      <th>Account</th>
-      <th>Name</th>
-      <th>Category</th>
-      <th class="num">Amount</th>
-      <th>Classification</th>
+      <th>{{ sort_link('Date', 'date') }}</th>
+      <th>{{ sort_link('Account', 'account') }}</th>
+      <th>{{ sort_link('Name', 'name') }}</th>
+      <th>{{ sort_link('Category', 'category') }}</th>
+      <th class="num">{{ sort_link('Amount', 'amount') }}</th>
+      <th>{{ sort_link('Classification', 'classification') }}</th>
       <th>Source</th>
       <th>Rec.</th>
     </tr>

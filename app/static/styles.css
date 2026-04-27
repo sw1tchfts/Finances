@@ -163,6 +163,17 @@ button:hover, .btn:hover { background: #1d4ed8; }
 .tx-table td.cls-business_expense { background: #fef3c7; }
 .tx-table td.cls-transfer { color: var(--muted); font-style: italic; }
 
+a.sort-header {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+a.sort-header:hover { color: var(--accent); }
+a.sort-header.active { color: var(--accent); }
+.sort-arrow { font-size: 0.75em; }
+
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
 .detail-list dt { font-weight: 600; margin-top: 0.4rem; font-size: 0.85rem; color: var(--muted); }
 .detail-list dd { margin: 0; }

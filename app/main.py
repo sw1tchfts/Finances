@@ -132,6 +132,19 @@ def create_app() -> Flask:
 
         where = "WHERE " + " AND ".join(clauses) if clauses else ""
         limit = min(int(q.get("limit", 200)), 2000)
+
+        sort_columns = {
+            "date":           "t.date",
+            "account":        "t.institution_name, t.account_name",
+            "name":           "t.name",
+            "category":       "t.category",
+            "amount":         "t.amount",
+            "classification": "COALESCE(c.classification, 'unclassified')",
+        }
+        sort_key = q.get("sort") if q.get("sort") in sort_columns else "date"
+        direction = "ASC" if q.get("dir") == "asc" else "DESC"
+        order_by = f"{sort_columns[sort_key]} {direction}, t.id {direction}"
+
         rows = g.db.execute(
             f"""
             SELECT t.*,
@@ -142,7 +155,7 @@ def create_app() -> Flask:
             LEFT JOIN classifications c
               ON c.transaction_id = t.id AND c.superseded_at IS NULL
             {where}
-            ORDER BY t.date DESC, t.id DESC
+            ORDER BY {order_by}
             LIMIT ?
             """,
             (*params, limit),
@@ -160,6 +173,8 @@ def create_app() -> Flask:
             q=q,
             in_window=in_window,
             classifications=list(CLASSIFICATION_LABELS.keys()),
+            sort_key=sort_key,
+            sort_dir=direction.lower(),
         )
 
     # ---- Transaction detail --------------------------------------------
@@ -213,14 +228,25 @@ def create_app() -> Flask:
 
     @app.get("/rules/new")
     def rules_new():
-        return render_template("rule_edit.html", rule=None)
+        # Optional prefill from query string (used by "Create rule from filter")
+        defaults = {
+            "name": request.args.get("name", ""),
+            "match_account_numbers": request.args.get("match_account_numbers", ""),
+            "match_name_regex": request.args.get("match_name_regex", ""),
+            "match_category_regex": request.args.get("match_category_regex", ""),
+            "match_date_from": request.args.get("match_date_from", ""),
+            "match_date_to": request.args.get("match_date_to", ""),
+            "match_sign": request.args.get("match_sign", ""),
+            "classification": request.args.get("classification", ""),
+        }
+        return render_template("rule_edit.html", rule=None, defaults=defaults)
 
     @app.get("/rules/<int:rule_id>")
     def rule_edit(rule_id: int):
         rule = rules_module.get_rule(g.db, rule_id)
         if rule is None:
             abort(404)
-        return render_template("rule_edit.html", rule=rule)
+        return render_template("rule_edit.html", rule=rule, defaults={})
 
     def _rule_form_payload(form) -> dict:
         def opt_float(k):
