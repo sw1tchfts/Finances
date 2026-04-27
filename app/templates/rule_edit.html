@@ -78,7 +78,7 @@
     <label>Classification
       {% set _cls = rule.classification if rule else defaults.get('classification','') %}
       <select name="classification" required>
-        {% for key, label in classification_labels.items() %}
+        {% for key, label in manual_classification_labels.items() %}
           <option value="{{ key }}" {% if _cls == key %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>

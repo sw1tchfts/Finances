@@ -102,7 +102,12 @@
         <td><a href="{{ url_for('transaction_detail', tx_id=r.id) }}">{{ r.name }}</a></td>
         <td class="small">{{ r.category }}</td>
         <td class="num {% if r.amount < 0 %}neg{% endif %}">{{ r.amount | signed_money }}</td>
-        <td class="cls-{{ r.classification }}">{{ classification_labels[r.classification] or r.classification }}</td>
+        <td class="cls-{{ r.effective_classification }}">
+          {{ classification_labels[r.effective_classification] or r.effective_classification }}
+          {% if r.effective_classification == 'out_of_window' and r.classification != 'unclassified' %}
+            <span class="muted small">(stored: {{ classification_labels[r.classification] }})</span>
+          {% endif %}
+        </td>
         <td class="small muted">{{ r.source or '—' }}</td>
         <td class="num">{{ r.receipt_count or 0 }}</td>
       </tr>

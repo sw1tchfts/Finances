@@ -53,6 +53,7 @@
       <tr><td>Transfer (excluded)</td><td class="num">{{ summary.transfer.count }}</td><td class="num">{{ summary.transfer.total | money }}</td></tr>
       <tr><td>Excluded</td><td class="num">{{ summary.excluded.count }}</td><td class="num">{{ summary.excluded.total | money }}</td></tr>
       <tr class="warn"><td>Unclassified</td><td class="num">{{ summary.unclassified.count }}</td><td class="num">{{ summary.unclassified.total | money }}</td></tr>
+      <tr><td>Out of Partnership Window</td><td class="num">{{ summary.out_of_window.count }}</td><td class="num">{{ summary.out_of_window.total | money }}</td></tr>
     </tbody>
   </table>
   {% if summary.unclassified.count > 0 %}

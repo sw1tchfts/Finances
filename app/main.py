@@ -31,7 +31,8 @@ RAW_DIR = ROOT / "data" / "raw"
 ALLOWED_RECEIPT_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic", ".gif", ".tif", ".tiff"}
 MAX_RECEIPT_BYTES = 25 * 1024 * 1024
 
-CLASSIFICATION_LABELS = {
+# Stored classifications — these can be set by rules or manual classify.
+MANUAL_CLASSIFICATION_LABELS = {
     "business_income": "Business Income",
     "business_expense": "Business Expense",
     "shared_expense": "Shared Expense",
@@ -39,6 +40,16 @@ CLASSIFICATION_LABELS = {
     "transfer": "Transfer (excluded)",
     "excluded": "Excluded",
     "unclassified": "Unclassified",
+}
+
+# Display-only classifications. `out_of_window` is computed from a transaction's
+# date relative to the partnership window — it overrides whatever stored
+# classification a row has whenever it's outside the window. We keep the stored
+# classification untouched so settings changes (moving the window) re-flow
+# everything automatically without rewriting the DB.
+CLASSIFICATION_LABELS = {
+    **MANUAL_CLASSIFICATION_LABELS,
+    "out_of_window": "Out of Partnership Window",
 }
 
 
@@ -59,6 +70,7 @@ def create_app() -> Flask:
             db.close()
 
     app.jinja_env.globals["classification_labels"] = CLASSIFICATION_LABELS
+    app.jinja_env.globals["manual_classification_labels"] = MANUAL_CLASSIFICATION_LABELS
 
     @app.template_filter("money")
     def money(value):
@@ -103,12 +115,38 @@ def create_app() -> Flask:
         q = request.args
         clauses = []
         params: list = []
+        start = db_module.get_setting(g.db, "partnership_start") or None
+        end = db_module.get_setting(g.db, "partnership_end") or None
         if q.get("account"):
             clauses.append("t.account_number = ?")
             params.append(q["account"])
-        if q.get("classification"):
+
+        # Classification filter: out_of_window is special — it filters by date,
+        # not by the classifications table. Other values filter by the stored
+        # classification AND restrict to inside-window so the displayed
+        # classification matches the filter (out-of-window rows would otherwise
+        # display as out_of_window even though the filter targeted, say,
+        # shared_expense).
+        cls_filter = q.get("classification")
+        if cls_filter == "out_of_window":
+            out_clauses = []
+            if start:
+                out_clauses.append("t.date < ?")
+                params.append(start)
+            if end:
+                out_clauses.append("t.date > ?")
+                params.append(end)
+            clauses.append("(" + " OR ".join(out_clauses) + ")" if out_clauses else "1 = 0")
+        elif cls_filter:
             clauses.append("COALESCE(c.classification, 'unclassified') = ?")
-            params.append(q["classification"])
+            params.append(cls_filter)
+            if start:
+                clauses.append("t.date >= ?")
+                params.append(start)
+            if end:
+                clauses.append("t.date <= ?")
+                params.append(end)
+
         if q.get("from"):
             clauses.append("t.date >= ?")
             params.append(q["from"])
@@ -121,8 +159,6 @@ def create_app() -> Flask:
             params.extend([needle, needle, needle])
         in_window = q.get("in_window") == "1"
         if in_window:
-            start = db_module.get_setting(g.db, "partnership_start")
-            end = db_module.get_setting(g.db, "partnership_end")
             if start:
                 clauses.append("t.date >= ?")
                 params.append(start)
@@ -145,7 +181,7 @@ def create_app() -> Flask:
         direction = "ASC" if q.get("dir") == "asc" else "DESC"
         order_by = f"{sort_columns[sort_key]} {direction}, t.id {direction}"
 
-        rows = g.db.execute(
+        raw_rows = g.db.execute(
             f"""
             SELECT t.*,
                    COALESCE(c.classification, 'unclassified') AS classification,
@@ -160,6 +196,18 @@ def create_app() -> Flask:
             """,
             (*params, limit),
         ).fetchall()
+
+        # Compute effective classification per row: out_of_window if outside the
+        # partnership window, else the stored classification.
+        rows = []
+        for r in raw_rows:
+            d = dict(r)
+            d["effective_classification"] = (
+                "out_of_window"
+                if (start and r["date"] < start) or (end and r["date"] > end)
+                else r["classification"]
+            )
+            rows.append(d)
 
         accounts = g.db.execute(
             "SELECT DISTINCT account_number, account_name, institution_name "
@@ -193,12 +241,18 @@ def create_app() -> Flask:
             (tx_id,),
         ).fetchall()
         current = rules_module.current_classification(g.db, tx_id)
+        start = db_module.get_setting(g.db, "partnership_start") or None
+        end = db_module.get_setting(g.db, "partnership_end") or None
+        out_of_window = (start and tx["date"] < start) or (end and tx["date"] > end)
         return render_template(
             "transaction_detail.html",
             tx=tx,
             history=history,
             receipts=receipts,
             current=current,
+            out_of_window=out_of_window,
+            partnership_start=start,
+            partnership_end=end,
         )
 
     @app.post("/transactions/<int:tx_id>/classify")

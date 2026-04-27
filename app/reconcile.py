@@ -42,6 +42,11 @@ class Summary:
     excluded: Bucket = field(default_factory=Bucket)
     unclassified: Bucket = field(default_factory=Bucket)
 
+    # Out of partnership window — counted separately so the user can see how
+    # much activity is being excluded from the main reconciliation by the
+    # window setting alone (vs. by classification).
+    out_of_window: Bucket = field(default_factory=Bucket)
+
     # Income is stored as a negative number in the CSV (money in). We flip sign
     # in `gross_income` so downstream math reads naturally.
     @property
@@ -98,6 +103,7 @@ def build_summary(conn: sqlite3.Connection) -> Summary:
 
     for r in rows:
         if not _in_window(r["date"], start, end):
+            s.out_of_window.add(r["amount"])
             continue
         bucket = getattr(s, r["classification"], None)
         if bucket is None:
@@ -108,34 +114,43 @@ def build_summary(conn: sqlite3.Connection) -> Summary:
 
 
 def by_account_and_class(conn: sqlite3.Connection) -> list[dict]:
-    """Breakdown by (account, classification) within the window. Useful for
-    the dashboard's contribution table."""
+    """Breakdown by (account, classification). Out-of-window transactions are
+    grouped under the synthetic 'out_of_window' classification regardless of
+    their stored classification."""
     start, end = _window(conn)
-    params: list = []
-    clauses = []
-    if start:
-        clauses.append("t.date >= ?")
-        params.append(start)
-    if end:
-        clauses.append("t.date <= ?")
-        params.append(end)
-    where = "WHERE " + " AND ".join(clauses) if clauses else ""
     rows = conn.execute(
-        f"""
+        """
         SELECT
             t.account_name,
             t.account_number,
             t.institution_name,
+            t.date,
             COALESCE(c.classification, 'unclassified') AS classification,
-            COUNT(*) AS n,
-            SUM(t.amount) AS total
+            t.amount
         FROM transactions t
         LEFT JOIN classifications c
           ON c.transaction_id = t.id AND c.superseded_at IS NULL
-        {where}
-        GROUP BY t.account_name, t.account_number, t.institution_name, classification
-        ORDER BY t.institution_name, t.account_name, classification
-        """,
-        params,
+        """
     ).fetchall()
-    return [dict(r) for r in rows]
+
+    # Aggregate in Python so we can apply the date-window override consistently
+    # with the rest of the app.
+    agg: dict[tuple, dict] = {}
+    for r in rows:
+        cls = "out_of_window" if not _in_window(r["date"], start, end) else r["classification"]
+        key = (r["institution_name"], r["account_name"], r["account_number"], cls)
+        bucket = agg.setdefault(
+            key,
+            {
+                "institution_name": r["institution_name"],
+                "account_name": r["account_name"],
+                "account_number": r["account_number"],
+                "classification": cls,
+                "n": 0,
+                "total": 0.0,
+            },
+        )
+        bucket["n"] += 1
+        bucket["total"] += r["amount"]
+
+    return sorted(agg.values(), key=lambda b: (b["institution_name"], b["account_name"], b["classification"]))

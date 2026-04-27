@@ -25,10 +25,19 @@
 
   <div>
     <h2>Classification</h2>
+    {% if out_of_window %}
+      <div class="callout warn">
+        <strong>Out of partnership window.</strong>
+        This transaction is dated {{ tx.date }}, which is
+        {% if partnership_start and tx.date < partnership_start %}before the start ({{ partnership_start }}){% endif %}
+        {% if partnership_end and tx.date > partnership_end %}after the end ({{ partnership_end }}){% endif %}.
+        It will appear as "Out of Partnership Window" everywhere, regardless of the stored classification below.
+      </div>
+    {% endif %}
     <form method="post" action="{{ url_for('classify_tx', tx_id=tx.id) }}" class="stack">
       <label>Type
         <select name="classification">
-          {% for key, label in classification_labels.items() %}
+          {% for key, label in manual_classification_labels.items() %}
             <option value="{{ key }}" {% if current and current.classification == key %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>

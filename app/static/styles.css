@@ -162,6 +162,8 @@ button:hover, .btn:hover { background: #1d4ed8; }
 .tx-table td.cls-business_income { background: #f0fdf4; }
 .tx-table td.cls-business_expense { background: #fef3c7; }
 .tx-table td.cls-transfer { color: var(--muted); font-style: italic; }
+.tx-table td.cls-out_of_window { background: #f3f4f6; color: var(--muted); }
+.callout.warn { background: #fff7ed; border-color: #fed7aa; }
 
 a.sort-header {
   color: inherit;
