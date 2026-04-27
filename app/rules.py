@@ -277,8 +277,16 @@ def apply_rules(
                 break
 
         if hit is None:
-            if current is None:
+            # No rule matched. Reset to unclassified unless it's already there.
+            already_default = (
+                current is not None
+                and current["source"] == "default"
+                and current["classification"] == "unclassified"
+            )
+            if not already_default:
                 set_classification(conn, tx["id"], "unclassified", "default")
+                if current is not None:
+                    changed += 1  # rule-sourced classification was removed
             continue
 
         matched += 1
